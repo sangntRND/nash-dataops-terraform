@@ -1,0 +1,7 @@
+*.zip
+__pycache__/
+*.pyc
+.terraform/
+metabase/metabase-data
+metabase/pgdata
+terraform/terraform.tfvars
