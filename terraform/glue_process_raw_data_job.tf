@@ -1,17 +1,16 @@
-# AWS Glue Job configuration
-# This file defines the Glue ETL jobs that transform the data
+# AWS Glue Job for processing raw data
 
-# Upload FHVHV Glue job script to S3
-resource "aws_s3_object" "fhvhv_etl_job_script" {
+# Upload glue process raw data job script to S3 at the first time for easier demo purpose and then it was managed by another repository
+resource "aws_s3_object" "glue_process_raw_data_script" {
   bucket  = aws_s3_bucket.data_bucket.id
-  key     = "scripts/fhvhv_etl_job.py"
-  content = file("${path.module}/helper/fhvhv_etl_job.py")
-  etag    = filemd5("${path.module}/helper/fhvhv_etl_job.py")
+  key     = "scripts/glue_process_raw_data.py"
+  content = file("${path.module}/helper/glue_process_raw_data.py")
+  etag    = filemd5("${path.module}/helper/glue_process_raw_data.py")
 }
 
-# Create FHVHV ETL Glue Job
-resource "aws_glue_job" "fhvhv_etl_job" {
-  name              = "fhvhv-etl-job-${var.environment}"
+# Create glue process raw data Job
+resource "aws_glue_job" "glue_process_raw_data" {
+  name              = "glue-process-raw-data-${var.environment}"
   role_arn          = aws_iam_role.glue_role.arn
   glue_version      = "3.0"
   worker_type       = "G.1X"
@@ -21,7 +20,7 @@ resource "aws_glue_job" "fhvhv_etl_job" {
   # Command configuration
   command {
     name            = "glueetl"
-    script_location = "s3://${aws_s3_bucket.data_bucket.bucket}/scripts/fhvhv_etl_job.py"
+    script_location = "s3://${aws_s3_bucket.data_bucket.bucket}/scripts/glue_process_raw_data.py"
     python_version  = "3"
   }
 
@@ -48,15 +47,15 @@ resource "aws_glue_job" "fhvhv_etl_job" {
 
   # Tags
   tags = {
-    Name = "fhvhv-etl-job-${var.environment}"
+    Name = "glue-process-raw-data-${var.environment}"
   }
 
   # Depends on the script being uploaded to S3
-  depends_on = [aws_s3_object.fhvhv_etl_job_script]
+  depends_on = [aws_s3_object.glue_process_raw_data_script]
 }
 
-# CloudWatch Log Group for FHVHV ETL Glue Job
-resource "aws_cloudwatch_log_group" "fhvhv_glue_job_logs" {
-  name              = "/aws-glue/jobs/fhvhv-etl-job-${var.environment}"
+# CloudWatch Log Group for Glue Process Raw Data Job
+resource "aws_cloudwatch_log_group" "glue_process_raw_data_job_logs" {
+  name              = "/aws-glue/jobs/glue-process-raw-data-${var.environment}"
   retention_in_days = 14
 }

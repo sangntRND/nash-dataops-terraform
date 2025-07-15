@@ -1,4 +1,4 @@
-# AWS Glue Job configuration for loading data from S3 to Redshift
+# # AWS Glue Job configuration for loading processed data from S3 to Redshift ( Data Lake to Data Warehouse)
 
 # Get the subnet's availability zone
 data "aws_subnet" "selected" {
@@ -25,25 +25,25 @@ resource "aws_glue_connection" "redshift_connection" {
   depends_on = [aws_redshift_cluster.dataops_redshift]
 }
 
-# Upload schema from catalog job script to S3
-resource "aws_s3_object" "schema_from_catalog_job_script" {
+# Upload job script to S3 at the first time for easier demo purpose and then it was managed by another repository
+resource "aws_s3_object" "glue_manage_redshift_schema_script" {
   bucket  = aws_s3_bucket.data_bucket.id
-  key     = "scripts/redshift_schema_from_catalog_job.py"
-  content = file("${path.module}/helper/redshift_schema_from_catalog_job.py")
-  etag    = filemd5("${path.module}/helper/redshift_schema_from_catalog_job.py")
+  key     = "scripts/glue_manage_redshift_schema.py"
+  content = file("${path.module}/helper/glue_manage_redshift_schema.py")
+  etag    = filemd5("${path.module}/helper/glue_manage_redshift_schema.py")
 }
 
-# Upload Redshift load job script to S3
-resource "aws_s3_object" "redshift_load_job_script" {
+# Upload glue load data to redshift job script to S3 at the first time for easier demo purpose and then it was managed by another repository
+resource "aws_s3_object" "glue_load_data_to_redshift_script" {
   bucket  = aws_s3_bucket.data_bucket.id
-  key     = "scripts/fhvhv_redshift_load_job.py"
-  content = file("${path.module}/helper/fhvhv_redshift_load_job.py")
-  etag    = filemd5("${path.module}/helper/fhvhv_redshift_load_job.py")
+  key     = "scripts/glue_load_data_to_redshift.py"
+  content = file("${path.module}/helper/glue_load_data_to_redshift.py")
+  etag    = filemd5("${path.module}/helper/glue_load_data_to_redshift.py")
 }
 
 # Create schema from catalog Glue Job
-resource "aws_glue_job" "schema_from_catalog_job" {
-  name              = "fhvhv-schema-from-catalog-job-${var.environment}"
+resource "aws_glue_job" "glue_manage_redshift_schema_job" {
+  name              = "glue-manage-redshift-schema-job-${var.environment}"
   role_arn          = aws_iam_role.glue_role.arn
   glue_version      = "3.0"
   worker_type       = "G.1X"
@@ -52,7 +52,7 @@ resource "aws_glue_job" "schema_from_catalog_job" {
 
   command {
     name            = "glueetl"
-    script_location = "s3://${aws_s3_bucket.data_bucket.bucket}/scripts/redshift_schema_from_catalog_job.py"
+    script_location = "s3://${aws_s3_bucket.data_bucket.bucket}/scripts/glue_manage_redshift_schema.py"
     python_version  = "3"
   }
 
@@ -85,15 +85,15 @@ resource "aws_glue_job" "schema_from_catalog_job" {
   # connections = [aws_glue_connection.redshift_connection.name]
 
   tags = {
-    Name = "fhvhv-schema-from-catalog-job-${var.environment}"
+    Name = "glue-manage-redshift-schema-job-${var.environment}"
   }
 
-  depends_on = [aws_s3_object.schema_from_catalog_job_script]
+  depends_on = [aws_s3_object.glue_manage_redshift_schema_script]
 }
 
 # Create Redshift load Glue Job
-resource "aws_glue_job" "redshift_load_job" {
-  name              = "fhvhv-redshift-load-job-${var.environment}"
+resource "aws_glue_job" "glue_load_data_to_redshift_job" {
+  name              = "glue-load-data-to-redshift-job-${var.environment}"
   role_arn          = aws_iam_role.glue_role.arn
   glue_version      = "3.0"
   worker_type       = "G.1X"
@@ -102,7 +102,7 @@ resource "aws_glue_job" "redshift_load_job" {
 
   command {
     name            = "glueetl"
-    script_location = "s3://${aws_s3_bucket.data_bucket.bucket}/scripts/fhvhv_redshift_load_job.py"
+    script_location = "s3://${aws_s3_bucket.data_bucket.bucket}/scripts/glue_load_data_to_redshift.py"
     python_version  = "3"
   }
 
@@ -134,50 +134,8 @@ resource "aws_glue_job" "redshift_load_job" {
   # connections = [aws_glue_connection.redshift_connection.name]
 
   tags = {
-    Name = "fhvhv-redshift-load-job-${var.environment}"
+    Name = "glue-load-data-to-redshift-job-${var.environment}"
   }
 
-  depends_on = [aws_s3_object.redshift_load_job_script]
-}
-
-# Create workflow to coordinate the ETL jobs
-resource "aws_glue_workflow" "fhvhv_etl_workflow" {
-  name        = "fhvhv-etl-workflow-${var.environment}"
-  description = "Workflow to coordinate FHVHV ETL and Redshift load jobs"
-}
-
-# Trigger to run schema creation job after processed data crawler completes
-resource "aws_glue_trigger" "schema_creation_after_crawler" {
-  name          = "schema-creation-after-crawler-${var.environment}"
-  type          = "CONDITIONAL"
-  workflow_name = aws_glue_workflow.fhvhv_etl_workflow.name
-
-  predicate {
-    conditions {
-      crawler_name = aws_glue_crawler.processed_fhvhv_crawler.name
-      crawl_state  = "SUCCEEDED"
-    }
-  }
-
-  actions {
-    job_name = aws_glue_job.schema_from_catalog_job.name
-  }
-}
-
-# Modify trigger to start load job after schema creation
-resource "aws_glue_trigger" "redshift_load_trigger" {
-  name          = "redshift-load-trigger-${var.environment}"
-  workflow_name = aws_glue_workflow.fhvhv_etl_workflow.name
-  type          = "CONDITIONAL"
-
-  actions {
-    job_name = aws_glue_job.redshift_load_job.name
-  }
-
-  predicate {
-    conditions {
-      job_name = aws_glue_job.schema_from_catalog_job.name
-      state    = "SUCCEEDED"
-    }
-  }
+  depends_on = [aws_s3_object.glue_load_data_to_redshift_script]
 }

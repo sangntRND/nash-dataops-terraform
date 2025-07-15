@@ -17,7 +17,7 @@ The infrastructure implements a complete data pipeline:
 - `/terraform` - Core Terraform configuration files
   - `main.tf` - Core AWS resources and provider configuration
   - `glue_job.tf` - AWS Glue ETL job definitions
-  - `redshift_load_job.tf` - Redshift data loading job configuration
+  - `glue_load_data_to_redshift_job.tf` - Redshift data loading job configuration
   - `glue_crawler.tf` - Glue Crawler configurations for data catalog
   - `variables.tf` - Input variables for customization
   - `terraform.tfvars` - Variable values configuration
