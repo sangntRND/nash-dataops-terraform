@@ -26,20 +26,20 @@ resource "aws_glue_connection" "redshift_connection" {
 }
 
 # Upload job script to S3 at the first time for easier demo purpose and then it was managed by another repository
-resource "aws_s3_object" "glue_manage_redshift_schema_script" {
-  bucket  = aws_s3_bucket.data_bucket.id
-  key     = "scripts/glue_manage_redshift_schema.py"
-  content = file("${path.module}/helper/glue_manage_redshift_schema.py")
-  etag    = filemd5("${path.module}/helper/glue_manage_redshift_schema.py")
-}
+# resource "aws_s3_object" "glue_manage_redshift_schema_script" {
+#   bucket  = aws_s3_bucket.data_bucket.id
+#   key     = "scripts/glue_manage_redshift_schema.py"
+#   content = file("${path.module}/helper/glue_manage_redshift_schema.py")
+#   etag    = filemd5("${path.module}/helper/glue_manage_redshift_schema.py")
+# }
 
 # Upload glue load data to redshift job script to S3 at the first time for easier demo purpose and then it was managed by another repository
-resource "aws_s3_object" "glue_load_data_to_redshift_script" {
-  bucket  = aws_s3_bucket.data_bucket.id
-  key     = "scripts/glue_load_data_to_redshift.py"
-  content = file("${path.module}/helper/glue_load_data_to_redshift.py")
-  etag    = filemd5("${path.module}/helper/glue_load_data_to_redshift.py")
-}
+# resource "aws_s3_object" "glue_load_data_to_redshift_script" {
+#   bucket  = aws_s3_bucket.data_bucket.id
+#   key     = "scripts/glue_load_data_to_redshift.py"
+#   content = file("${path.module}/helper/glue_load_data_to_redshift.py")
+#   etag    = filemd5("${path.module}/helper/glue_load_data_to_redshift.py")
+# }
 
 # Create schema from catalog Glue Job
 resource "aws_glue_job" "glue_manage_redshift_schema_job" {
@@ -88,7 +88,7 @@ resource "aws_glue_job" "glue_manage_redshift_schema_job" {
     Name = "glue-manage-redshift-schema-job-${var.environment}"
   }
 
-  depends_on = [aws_s3_object.glue_manage_redshift_schema_script]
+  # depends_on = [aws_s3_object.glue_manage_redshift_schema_script]
 }
 
 # Create Redshift load Glue Job
@@ -137,5 +137,5 @@ resource "aws_glue_job" "glue_load_data_to_redshift_job" {
     Name = "glue-load-data-to-redshift-job-${var.environment}"
   }
 
-  depends_on = [aws_s3_object.glue_load_data_to_redshift_script]
+  # depends_on = [aws_s3_object.glue_load_data_to_redshift_script]
 }

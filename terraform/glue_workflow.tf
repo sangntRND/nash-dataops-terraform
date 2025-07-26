@@ -8,7 +8,7 @@ resource "aws_glue_workflow" "data_pipeline_workflow" {
 resource "aws_glue_trigger" "raw_data_crawler_schedule" {
   name     = "raw-data-crawler-schedule-${var.environment}"
   type     = "SCHEDULED"
-  schedule = "cron(0 0 * * ? *)" # Run daily at midnight UTC
+  schedule = "cron(0 0 3 * ? *)" # Run monthly at 3rd day of month at midnight UTC
   workflow_name = aws_glue_workflow.data_pipeline_workflow.name
 
   actions {

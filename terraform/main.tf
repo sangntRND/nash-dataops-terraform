@@ -2,9 +2,9 @@
 # This file sets up the core infrastructure components
 terraform {
   backend "s3" {
-    bucket  = "dataops-glue-etl-tfstate-4"
+    bucket  = "dataops-glue-etl-tfstate-dev"
     key     = "terraform/state"
-    region  = "us-east-1"
+    region  = "ap-southeast-1"
     profile = "cloud-user"
   }
 }

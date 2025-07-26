@@ -1,12 +1,12 @@
 # AWS Glue Job for processing raw data
 
 # Upload glue process raw data job script to S3 at the first time for easier demo purpose and then it was managed by another repository
-resource "aws_s3_object" "glue_process_raw_data_script" {
-  bucket  = aws_s3_bucket.data_bucket.id
-  key     = "scripts/glue_process_raw_data.py"
-  content = file("${path.module}/helper/glue_process_raw_data.py")
-  etag    = filemd5("${path.module}/helper/glue_process_raw_data.py")
-}
+# resource "aws_s3_object" "glue_process_raw_data_script" {
+#   bucket  = aws_s3_bucket.data_bucket.id
+#   key     = "scripts/glue_process_raw_data.py"
+#   content = file("${path.module}/helper/glue_process_raw_data.py")
+#   etag    = filemd5("${path.module}/helper/glue_process_raw_data.py")
+# }
 
 # Create glue process raw data Job
 resource "aws_glue_job" "glue_process_raw_data" {
@@ -51,7 +51,7 @@ resource "aws_glue_job" "glue_process_raw_data" {
   }
 
   # Depends on the script being uploaded to S3
-  depends_on = [aws_s3_object.glue_process_raw_data_script]
+  # depends_on = [aws_s3_object.glue_process_raw_data_script]
 }
 
 # CloudWatch Log Group for Glue Process Raw Data Job

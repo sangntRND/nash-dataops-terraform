@@ -6,75 +6,100 @@ This repository contains the Infrastructure as Code (IaC) components for the Nas
 
 The infrastructure implements a complete data pipeline:
 
-1. **Extract**: Raw data from NYC For-Hire Vehicle (FHV) trips is loaded into S3
-2. **Transform**: AWS Glue processes the data, joining with lookup tables and adding derived fields
-3. **Load**: Processed data is loaded into Amazon Redshift for analytics
-
-![Architecture Diagram](docs/architecture.md)
+![Architecture Diagram](media/DataOps.drawio.png)
 
 ## Project Structure
 
 - `/terraform` - Core Terraform configuration files
   - `main.tf` - Core AWS resources and provider configuration
-  - `glue_job.tf` - AWS Glue ETL job definitions
-  - `glue_load_data_to_redshift_job.tf` - Redshift data loading job configuration
-  - `glue_crawler.tf` - Glue Crawler configurations for data catalog
   - `variables.tf` - Input variables for customization
-  - `terraform.tfvars` - Variable values configuration
-  - `/helper` - Supporting scripts and templates
+  - `terraform.tfvars` - Variable values for the configuration
+  - `glue_catalog.tf` - Defines the Glue Data Catalog resources
+  - `glue_process_raw_data_job.tf` - Glue job for processing raw data
+  - `glue_validate_data_job.tf` - Glue job for validating data
+  - `glue_load_data_to_redshift_job.tf` - Glue job for loading data into Redshift
+  - `glue_workflow.tf` - Defines the Glue workflow to orchestrate the jobs
 - `/metabase` - Metabase analytics platform configuration with Docker Compose
 - `/data` - Sample data files and templates
-- `/docs` - Documentation files
-- `/scripts` - Deployment and utility scripts
+- `/media` - Contains media files, such as architecture diagrams
 
-## ETL Workflow
+## Data pipeline Workflow
 
-The deployed infrastructure creates an AWS Glue Workflow with the following steps:
+The deployed infrastructure creates an AWS Glue Workflow that orchestrates a series of jobs to process data from ingestion to analytics:
 
-1. **S3 to S3 ETL (AWS Glue)**: Transforms raw taxi data, joins with lookup data, and writes processed data back to S3
-2. **Redshift Schema Creation (AWS Glue)**: Manages the Redshift database structure, creating tables if they don't exist
-3. **S3 to Redshift ETL (AWS Glue)**: Loads processed data into Redshift for analytics
+1. **Ingest Data**: Raw data files (e.g., CSV, Parquet) are uploaded to an S3 bucket which serves as a data lake.
+2. **Crawl Raw Data**: An AWS Glue Crawler scans the raw data in S3 and updates the metadata in the AWS Glue Data Catalog, creating or updating a "raw table".
+3. **Process Raw Data**: An AWS Glue ETL job, written in PySpark, transforms the raw data. This includes cleaning, joining, and enriching the data, which is then written to a separate "processed" S3 bucket.
+4. **Validate Data Quality**: An AWS Glue Data Quality job runs checks on the processed data to ensure it meets defined standards and rules.
+5. **Crawl Processed Data**: A second AWS Glue Crawler scans the processed data in S3 to update the Glue Data Catalog with the schema of the clean data.
+6. **Load to Data Warehouse**: An AWS Glue job loads the final, processed data from S3 into an Amazon Redshift data warehouse.
+7. **Analytics and Visualization**: The data in Redshift is now ready for consumption by business intelligence tools like Metabase and Tableau for analysis and reporting.
 
 ## Setup and Deployment
 
 1. **Prerequisites**:
-   - AWS CLI installed and configured
+   - AWS CLI installed and configured the profile name as `cloud-user` with your AWS credentials
    - Terraform installed (v1.0+)
    - AWS account with appropriate permissions
+   - Add `terraform.tfvars` file in the `terraform` directory with the required variables and change the values as per your environment
+   ```yaml
+      # Terraform variables for AWS Glue ETL Demo
+
+      # AWS Region where resources will be deployed
+      region = "ap-southeast-1"
+
+      # S3 bucket name for storing data and scripts
+      # Note: S3 bucket names must be globally unique
+      data_bucket_name = "dataops-glue-etl-demo-data-bucket-dev"
+
+      # Environment tag (dev, staging, or prod)
+      environment = "dev"
+
+      # Redshift credentials
+      # Note: These should be secured using a secrets manager in production
+      redshift_username = "admin"
+      redshift_password = "StrongPassword123!" # In production, use a more secure method
+
+      # Common tags to apply to all resources
+      tags = {
+         Owner      = "DataOps-Team"
+         Project    = "ETL-Demo"
+         CostCenter = "DataEngineering"
+      }
+   ```
 
 2. **Deploy Infrastructure**:
    ```bash
    export AWS_PROFILE=cloud-user
-   aws s3 mb s3://dataops-glue-etl-demo1-tfstate --region us-east-1
+
+   # Change your bucket name as per your environment and update the bucket name in main.tf file
+   aws s3 mb s3://dataops-glue-etl-demo-tfstate --region ap-southeast-1
    cd terraform
    terraform init
    terraform apply
    ```
 
-3. **Configure Metabase** (optional):
+3. **Configure Metabase**:
    ```bash
    cd metabase
    docker-compose up -d
    ```
 
-## Customization
-
-To adapt this project for your own data:
-1. Modify the Terraform variables in `terraform.tfvars`
-2. Update the Glue job parameters for your specific data sources
-3. Adjust Redshift configuration to match your analytics requirements
-
 ## Terraform Components
 
-Key infrastructure components defined in this repository:
+This project provisions the following key AWS resources using Terraform:
 
-- S3 buckets for raw and processed data
-- AWS Glue ETL jobs for data transformation
-- AWS Glue Crawlers for data cataloging
-- Redshift cluster for data warehousing
-- IAM roles and policies for secure access
-- Glue workflow for orchestration
-- CloudWatch alarms for monitoring
+- **Amazon S3 Buckets**: Securely stores raw data, processed data, and ETL scripts.
+- **AWS Glue Data Catalog**: A centralized metadata repository, including a database and crawlers for discovering the schema of both raw and processed data.
+- **AWS Glue Jobs**: A series of serverless ETL jobs to:
+  - Process raw data using PySpark.
+  - Validate the quality of the processed data.
+  - Manage the schema of the Redshift data warehouse.
+  - Load the final, clean data into Redshift.
+- **AWS Glue Workflow**: Orchestrates the entire data pipeline, using triggers to chain jobs and crawlers together in the correct sequence.
+- **IAM Roles and Policies**: Provides fine-grained permissions for AWS services to interact with each other securely, following the principle of least privilege.
+- **Amazon Redshift Cluster**: A fully managed data warehouse for high-performance analytics and business intelligence.
+- **CloudWatch Alarms and Log Groups**: For monitoring the pipeline's health, logging job outputs, and sending notifications if issues arise.
 
 ## Metabase Analytics
 
@@ -84,14 +109,6 @@ The `/metabase` directory contains a Docker Compose setup for running Metabase, 
 - Provides dashboards and ad-hoc query capabilities
 - Runs in Docker for easy deployment
 - Persistent storage configuration included
-
-## Security Considerations
-
-The infrastructure includes:
-- IAM roles with least-privilege permissions
-- Secure storage of credentials
-- Network isolation for Redshift cluster
-- Encryption for data at rest and in transit
 
 ## Resource Cleanup
 
@@ -103,7 +120,3 @@ terraform destroy
 ```
 
 This will delete all AWS resources created by this project, including S3 buckets, Glue jobs, and the Redshift cluster.
-
-## Related Repositories
-
-- [nash-dataops-pipeline-code](https://github.com/your-org/nash-dataops-pipeline-code) - ETL job code for the pipeline

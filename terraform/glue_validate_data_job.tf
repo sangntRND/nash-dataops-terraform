@@ -1,12 +1,12 @@
 # --- AWS Glue Job for validating processed data ---
 
 # Upload glue_validate_data.py script to S3
-resource "aws_s3_object" "glue_validate_data_script" {
-  bucket  = aws_s3_bucket.data_bucket.id
-  key     = "scripts/glue_validate_data.py"
-  content = file("${path.module}/helper/glue_validate_data.py")
-  etag    = filemd5("${path.module}/helper/glue_validate_data.py")
-}
+# resource "aws_s3_object" "glue_validate_data_script" {
+#   bucket  = aws_s3_bucket.data_bucket.id
+#   key     = "scripts/glue_validate_data.py"
+#   content = file("${path.module}/helper/glue_validate_data.py")
+#   etag    = filemd5("${path.module}/helper/glue_validate_data.py")
+# }
 
 # Create glue_validate_data Job
 resource "aws_glue_job" "glue_validate_data" {
@@ -49,7 +49,7 @@ resource "aws_glue_job" "glue_validate_data" {
   }
 
   # Depends on the script being uploaded to S3 first
-  depends_on = [aws_s3_object.glue_validate_data_script]
+  # depends_on = [aws_s3_object.glue_validate_data_script]
 }
 
 # CloudWatch Log Group for the Glue Validation Job
